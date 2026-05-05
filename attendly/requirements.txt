@@ -1,0 +1,11 @@
+django
+python-dotenv
+waitress
+whitenoise
+qrcode
+Pillow
+gunicorn
+psycopg2-binary
+dj-database-url
+cloudinary
+django-cloudinary-storage

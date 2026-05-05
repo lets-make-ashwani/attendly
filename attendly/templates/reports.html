@@ -1,0 +1,81 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<style>
+/* ===== ONLY RESPONSIVE FIX ===== */
+.report-box {
+    margin-top: 30px;
+    border: 1px solid #ddd;
+    padding: 20px;
+    border-radius: 8px;
+    background: #f9f9f9;
+    display: inline-block;
+    max-width: 100%;
+}
+
+.report-form {
+    display: flex;
+    gap: 15px;
+    align-items: flex-end;
+    justify-content: center;
+    margin-top: 15px;
+    flex-wrap: wrap; /* ✅ FIX: prevents overflow */
+}
+
+.report-form div {
+    display: flex;
+    flex-direction: column;
+}
+
+/* ✅ MOBILE FIX */
+@media (max-width: 768px) {
+    .report-form {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .report-form button {
+        width: 100%;
+    }
+}
+</style>
+
+<div class="container">
+    <div class="card" style="padding: 50px; text-align: center; margin-top: 20px;">
+        
+        <h2 style="color: #333;">📊 Reports Dashboard</h2>
+
+        <p style="color: #666; margin-top: 15px; font-size: 16px;">
+            Export employee attendance logs to a CSV file for payroll and tracking.
+        </p>
+        
+        <div class="report-box">
+
+            <h3 style="margin-top: 0;">Export Attendance Data</h3>
+
+            <form action="{% url 'export_attendance_csv' %}" method="GET" class="report-form">
+
+                <div>
+                    <label style="font-weight: bold; font-size: 14px;">Start Date:</label>
+                    <input type="date" name="start_date" required
+                        style="padding: 8px; border: 1px solid #ccc; border-radius: 4px; margin-top: 5px;">
+                </div>
+
+                <div>
+                    <label style="font-weight: bold; font-size: 14px;">End Date:</label>
+                    <input type="date" name="end_date" required
+                        style="padding: 8px; border: 1px solid #ccc; border-radius: 4px; margin-top: 5px;">
+                </div>
+
+                <button type="submit"
+                    style="background: #28a745; color: white; padding: 10px 20px; border: none; border-radius: 5px; font-weight: bold; cursor: pointer;">
+                    Download CSV
+                </button>
+
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

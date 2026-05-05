@@ -1,0 +1,8 @@
+# Environments and Secrets
+venv/
+.env
+__pycache__/
+
+# Database and Media
+db.sqlite3
+media/

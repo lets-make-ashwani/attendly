@@ -1,0 +1,256 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<!-- Leaflet CSS for the map -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+<div class="container">
+
+    <div class="cards">
+
+        <div class="card">
+            <h3>Total Employees</h3>
+            <h2>{{ total_employees }}</h2>
+        </div>
+
+        <div class="card">
+            <h3>Present Today</h3>
+            <h2>{{ present_count }}</h2>
+
+            <!-- ✅ Progress Bar Added -->
+            <div class="progress">
+                <div class="progress-bar" style="width: {{ progress_percentage|default:0 }}%; background-color: #28a745; height: 8px; border-radius: 10px;"></div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>Absent Today</h3>
+            <h2>{{ absent_count }}</h2>
+        </div>
+
+    </div>
+
+    <!-- 📍 OFFICE GPS LOCATION PANEL -->
+    <div class="table" style="margin-bottom: 30px; border: 2px solid #007bff; padding: 20px; border-radius: 14px; background: white; box-shadow: 0 6px 25px rgba(0,0,0,0.05);">
+        <h3 style="color: #007bff; margin-top: 0; padding-bottom: 15px; border-bottom: 1px solid #eee;">📍 Office GPS Location</h3>
+        <form method="POST" action="{% url 'update_location' %}" style="display: flex; gap: 15px; align-items: flex-end; flex-wrap: wrap; margin-top: 15px;">
+            {% csrf_token %}
+            <div style="flex: 1; min-width: 150px;">
+                <label style="font-weight: bold; font-size: 14px; color: #555;">Latitude:</label>
+                <input type="number" step="any" name="latitude" id="latInput" value="{{ location.latitude|default:'28.6139' }}" required style="width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ddd; border-radius: 8px;">
+            </div>
+            <div style="flex: 1; min-width: 150px;">
+                <label style="font-weight: bold; font-size: 14px; color: #555;">Longitude:</label>
+                <input type="number" step="any" name="longitude" id="lonInput" value="{{ location.longitude|default:'77.2090' }}" required style="width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ddd; border-radius: 8px;">
+            </div>
+            <div style="flex: 1; min-width: 150px;">
+                <label style="font-weight: bold; font-size: 14px; color: #555;">Radius: <span id="radVal">{{ location.radius|default:100 }}</span>m</label>
+                <input type="range" name="radius" id="radInput" min="10" max="1000" value="{{ location.radius|default:100 }}" oninput="document.getElementById('radVal').innerText=this.value" style="width: 100%; margin-top: 10px;">
+            </div>
+<button type="submit"
+        style="background:#007bff; color:#fff; height:42px; padding:0 18px; border:none; border-radius:6px; font-weight:600; cursor:pointer;">
+    Update
+</button>
+        </form>
+        <p style="margin-top: 15px; font-size: 13px; color: #888;">Employees must be within this radius to punch attendance.</p>
+        
+        <!-- 🗺️ INTERACTIVE MAP CONTAINER -->
+        <div id="officeMap" style="height: 350px; width: 100%; margin-top: 15px; border-radius: 8px; border: 1px solid #ddd; z-index: 1;"></div>
+    </div>
+
+    <!-- 📅 COMPANY CALENDAR -->
+    <div class="table" style="margin-bottom: 30px;">
+        <h3 style="margin-top: 0; padding-bottom: 15px;">📅 Company Monthly Calendar</h3>
+        <div id="adminCalendar"></div>
+    </div>
+
+    <!-- ✅ PENDING APPLICATIONS TABLE -->
+    {% if pending_users %}
+    <div class="table" style="margin-bottom: 30px; border: 2px solid #ffc107;">
+        <h3 style="color: #d39e00; margin-top: 0;">⏳ Pending Applications</h3>
+        <div style="overflow-x: auto;">
+            <table>
+                <tr>
+                    <th>Name</th>
+                    <th>Username</th>
+                    <th>Email</th>
+                    <th>Mobile</th>
+                    <th>Actions</th>
+                </tr>
+                {% for pending in pending_users %}
+                <tr>
+                    <td>{{ pending.first_name }} {{ pending.last_name }}</td>
+                    <td>{{ pending.username }}</td>
+                    <td>{{ pending.email }}</td>
+                    <td>{{ pending.mobile_no|default:"-" }}</td>
+<td style="display:flex; gap:8px; flex-wrap:wrap;">
+
+    <a href="{% url 'approve_user' pending.id %}"
+       style="
+        background:#28a745;
+        color:white;
+        padding:6px 12px;
+        font-size:12px;
+        border-radius:6px;
+        text-decoration:none;
+        display:inline-block;
+        font-weight:600;
+       ">
+       Approve
+    </a>
+
+    <a href="{% url 'delete_user' pending.id %}"
+       onclick="return confirm('Are you sure you want to reject this application?');"
+       style="
+        background:#dc3545;
+        color:white;
+        padding:6px 12px;
+        font-size:12px;
+        border-radius:6px;
+        text-decoration:none;
+        display:inline-block;
+        font-weight:600;
+       ">
+       Reject
+    </a>
+
+</td>
+                </tr>
+                {% endfor %}
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- ✅ PENDING LEAVES TABLE -->
+    {% if pending_leaves %}
+    <div class="table" style="margin-bottom: 30px; border: 2px solid #17a2b8;">
+        <h3 style="color: #117a8b; margin-top: 0;">🌴 Pending Leave Requests</h3>
+        <div style="overflow-x: auto;">
+            <table>
+                <tr>
+                    <th>Employee</th>
+                    <th>Type</th>
+                    <th>Dates</th>
+                    <th>Reason</th>
+                    <th>Actions</th>
+                </tr>
+                {% for leave in pending_leaves %}
+                <tr>
+                    <td>{{ leave.user.get_full_name|default:leave.user.username }}</td>
+                    <td>{{ leave.leave_type }}</td>
+                    <td>{{ leave.start_date }} to {{ leave.end_date }}</td>
+                    <td>{{ leave.reason }}</td>
+                    <td>
+                        <a href="{% url 'approve_leave' leave.id %}" class="btn btn-success" style="padding: 6px 12px; font-size: 12px; display: inline-block;">Approve</a>
+                        <a href="{% url 'reject_leave' leave.id %}" class="btn btn-danger" style="padding: 6px 12px; font-size: 12px; display: inline-block;">Reject</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="table">
+        <h3>Today's Attendance</h3>
+
+        <div style="overflow-x: auto;">
+            <table>
+                <tr>
+                    <th>Status</th>
+                    <th>Employee</th>
+                    <th>Date</th>
+                    <th>Check In</th>
+                    <th>Check Out</th>
+                </tr>
+
+                {% for a in attendance_list %}
+                <tr>
+                    <td>
+                        {% if a.check_in %}
+                            <span style="color: green; font-weight: bold;">✔ Present</span>
+                        {% else %}
+                            <span style="color: red; font-weight: bold;">✖ Absent</span>
+                        {% endif %}
+                    </td>
+
+                    <td>{{ a.user.get_full_name|default:a.user.username }}</td>
+                    <td>{{ a.date }}</td>
+                    <td>{{ a.check_in|default:"-" }}</td>
+                    <td>{{ a.check_out|default:"-" }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5">No attendance yet today</td>
+                </tr>
+                {% endfor %}
+
+            </table>
+        </div>
+    </div>
+
+</div>
+
+<!-- Scripts -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js'></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var latInput = document.getElementById('latInput');
+        var lonInput = document.getElementById('lonInput');
+        
+        var currentLat = parseFloat(latInput.value);
+        var currentLon = parseFloat(lonInput.value);
+
+        // Initialize the map
+        var map = L.map('officeMap').setView([currentLat, currentLon], 16);
+
+        // Load free map tiles from OpenStreetMap
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '© OpenStreetMap'
+        }).addTo(map);
+
+        // Add a draggable marker
+        var marker = L.marker([currentLat, currentLon], {draggable: true}).addTo(map);
+
+        // Add geofence circle
+        var circle = L.circle([currentLat, currentLon], {
+            color: 'red', fillColor: '#f03', fillOpacity: 0.2,
+            radius: parseInt(document.getElementById('radInput').value)
+        }).addTo(map);
+        document.getElementById('radInput').addEventListener('input', function(e) { circle.setRadius(parseInt(e.target.value)); });
+
+        // Update inputs when map is clicked
+        map.on('click', function(e) {
+            marker.setLatLng(e.latlng);
+            circle.setLatLng(e.latlng);
+            latInput.value = e.latlng.lat.toFixed(6);
+            lonInput.value = e.latlng.lng.toFixed(6);
+        });
+
+        // Update inputs when marker is dragged
+        marker.on('dragend', function(e) {
+            var position = marker.getLatLng();
+            circle.setLatLng(position);
+            latInput.value = position.lat.toFixed(6);
+            lonInput.value = position.lng.toFixed(6);
+        });
+        
+        // Initialize FullCalendar
+        var calendarEl = document.getElementById('adminCalendar');
+        var calendar = new FullCalendar.Calendar(calendarEl, {
+            initialView: 'dayGridMonth',
+            events: {{ calendar_events|safe }},
+            height: 'auto',
+            headerToolbar: {
+                left: 'title',
+                right: 'prev,next today'
+            }
+        });
+        calendar.render();
+    });
+</script>
+
+{% endblock %}

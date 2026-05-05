@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container">
+    <div class="table">
+        <h3>Active Employees List</h3>
+        <table>
+            <tr>
+                <th>Name</th>
+                <th>Username</th>
+                <th>Email</th>
+                <th>Mobile Number</th>
+            </tr>
+            {% for emp in employees %}
+            <tr>
+                <td>
+                    <a href="{% url 'employee_detail' emp.id %}" style="text-decoration: none; color: #007bff; font-weight: bold;">{{ emp.get_full_name|default:emp.username }}</a>
+                </td>
+                <td>{{ emp.username }}</td>
+                <td>{{ emp.email }}</td>
+                <td>{{ emp.mobile_no|default:"-" }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="4">No approved employees found.</td>
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,67 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container">
+    <div class="card" style="max-width: 600px; margin: 30px auto; padding: 40px; border-radius: 12px; background: white; box-shadow: 0 4px 15px rgba(0,0,0,0.05);">
+        
+        <div style="text-align: center; margin-bottom: 25px;">
+            {% if employee.profile_picture %}
+                <img src="{{ employee.profile_picture.url }}" style="width: 130px; height: 130px; border-radius: 50%; object-fit: cover; border: 4px solid #f5f7fb; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
+            {% else %}
+                <div style="width: 130px; height: 130px; border-radius: 50%; background: linear-gradient(135deg, #007bff, #6610f2); display: flex; align-items: center; justify-content: center; font-size: 50px; color: white; margin: 0 auto; text-transform: uppercase; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">{{ employee.username|make_list|first }}</div>
+            {% endif %}
+            
+            <h2 style="margin: 15px 0 5px 0; color: #333; font-size: 24px;">{{ employee.get_full_name|default:employee.username }}</h2>
+            
+            <span style="background: {% if employee.is_approved %}#28a745{% else %}#ffc107{% endif %}; color: {% if employee.is_approved %}white{% else %}#333{% endif %}; padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; display: inline-block; margin-top: 5px;">
+                {% if employee.is_approved %}Approved Employee{% else %}Pending Approval{% endif %}
+            </span>
+        </div>
+        
+        <div style="background: #f8f9fa; border-radius: 8px; padding: 20px; border: 1px solid #eee;">
+            <h4 style="margin-top: 0; color: #555; border-bottom: 1px solid #ddd; padding-bottom: 10px;">Contact & Work Details</h4>
+            <table style="width: 100%; border-collapse: collapse; margin-top: 15px;">
+                <tr><td style="padding: 10px 0; border-bottom: 1px solid #eee; color: #666;"><strong>Username</strong></td><td style="padding: 10px 0; border-bottom: 1px solid #eee; text-align: right; color: #333;">{{ employee.username }}</td></tr>
+                <tr><td style="padding: 10px 0; border-bottom: 1px solid #eee; color: #666;"><strong>Email</strong></td><td style="padding: 10px 0; border-bottom: 1px solid #eee; text-align: right; color: #333;">{{ employee.email|default:"N/A" }}</td></tr>
+                <tr><td style="padding: 10px 0; border-bottom: 1px solid #eee; color: #666;"><strong>Mobile Number</strong></td><td style="padding: 10px 0; border-bottom: 1px solid #eee; text-align: right; color: #333;">{{ employee.mobile_no|default:"N/A" }}</td></tr>
+                <tr><td style="padding: 10px 0; border-bottom: 1px solid #eee; color: #666;"><strong>Department</strong></td><td style="padding: 10px 0; border-bottom: 1px solid #eee; text-align: right; color: #333;">{{ employee.department|default:"Not Set" }}</td></tr>
+                <tr><td style="padding: 10px 0; border-bottom: 1px solid #eee; color: #666;"><strong>Designation</strong></td><td style="padding: 10px 0; border-bottom: 1px solid #eee; text-align: right; color: #333;">{{ employee.designation|default:"Not Set" }}</td></tr>
+                <tr><td style="padding: 10px 0; border-bottom: 1px solid #eee; color: #666;"><strong>Shift Start Time</strong></td><td style="padding: 10px 0; border-bottom: 1px solid #eee; text-align: right; color: #333;">{{ employee.shift_start|time:"h:i A" }}</td></tr>
+                <tr><td style="padding: 10px 0; border-bottom: 1px solid #eee; color: #666;"><strong>Shift End Time</strong></td><td style="padding: 10px 0; border-bottom: 1px solid #eee; text-align: right; color: #333;">{{ employee.shift_end|time:"h:i A" }}</td></tr>
+                <tr><td style="padding: 10px 0; color: #666;"><strong>Date Joined</strong></td><td style="padding: 10px 0; text-align: right; color: #333;">{{ employee.date_joined|date:"F d, Y" }}</td></tr>
+            </table>
+        </div>
+        
+        <div style="text-align: center; margin-top: 30px; display: flex; flex-wrap: wrap; gap: 15px; justify-content: center;">
+            <a href="{% url 'employees' %}" class="btn" style="background: #6c757d; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold;">← Back to List</a>
+            <button onclick="document.getElementById('editModal').style.display='flex'" class="btn" style="background: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 5px; font-weight: bold; cursor: pointer;">Edit Settings</button>
+            {% if not employee.is_approved %}
+                <a href="{% url 'approve_user' employee.id %}" class="btn" style="background: #28a745; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold;">Approve User</a>
+            {% endif %}
+            <a href="{% url 'delete_user' employee.id %}" onclick="return confirm('Are you sure you want to permanently delete this employee? This action cannot be undone.');" class="btn" style="background: #dc3545; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold;">Remove</a>
+        </div>
+    </div>
+
+    <!-- Edit Modal (For Admins) -->
+    <div id="editModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+        <div style="background: white; padding: 30px; border-radius: 8px; width: 400px; max-width: 90%;">
+            <h3 style="margin-top: 0;">Edit Employee Settings</h3>
+            <form method="POST" action="{% url 'edit_employee' employee.id %}" style="display: flex; flex-direction: column; gap: 15px; margin-top: 15px;">
+                {% csrf_token %}
+                <label style="font-size: 14px; font-weight: bold;">Department:</label>
+                <input type="text" name="department" value="{{ employee.department|default:'' }}" style="padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                <label style="font-size: 14px; font-weight: bold;">Designation:</label>
+                <input type="text" name="designation" value="{{ employee.designation|default:'' }}" style="padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                <label style="font-size: 14px; font-weight: bold;">Shift Start:</label>
+                <input type="time" name="shift_start" value="{{ employee.shift_start|time:'H:i' }}" style="padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                <label style="font-size: 14px; font-weight: bold;">Shift End:</label>
+                <input type="time" name="shift_end" value="{{ employee.shift_end|time:'H:i' }}" style="padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 10px;">
+                    <button type="button" onclick="document.getElementById('editModal').style.display='none'" style="background: #ccc; padding: 8px 15px; border: none; border-radius: 4px; cursor: pointer;">Cancel</button>
+                    <button type="submit" style="background: #007bff; color: white; padding: 8px 15px; border: none; border-radius: 4px; cursor: pointer;">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

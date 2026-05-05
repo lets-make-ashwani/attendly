@@ -1,0 +1,351 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<style>
+/* ===== DASHBOARD UI ENHANCEMENTS ===== */
+.cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+.card {
+    background: white;
+    padding: 25px;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+}
+.profile-card {
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+.profile-img, .profile-placeholder {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 4px solid #fff;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+    margin-bottom: 15px;
+}
+.profile-placeholder {
+    background: linear-gradient(135deg, #007bff, #6610f2);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 48px;
+    text-transform: uppercase;
+}
+.leave-form-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    margin-top: 15px;
+    align-items: flex-end;
+}
+.leave-form-group {
+    flex: 1;
+    min-width: 130px;
+    display: flex;
+    flex-direction: column;
+}
+.leave-form-group label {
+    font-size: 13px;
+    font-weight: bold;
+    color: #555;
+    margin-bottom: 5px;
+}
+.leave-form-group input, .leave-form-group select {
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 14px;
+}
+.leave-list li {
+    background: #f8f9fa;
+    padding: 12px 15px;
+    border-radius: 8px;
+    margin-top: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-left: 4px solid #007bff;
+}
+
+/* ===== FIX FOR EDIT PROFILE MODAL ===== */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 2000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.6);
+    align-items: center;
+    justify-content: center;
+}
+
+/* ===== INLINE MOBILE FIXES TO BYPASS CACHING ===== */
+@media (max-width: 768px) {
+    .cards {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 15px !important;
+    }
+    .card {
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+    .form-row {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 10px !important;
+    }
+    .form-row select, .form-row input, .form-row button {
+        width: 100% !important;
+        box-sizing: border-box !important;
+        margin: 0 !important;
+    }
+    .table {
+        width: 100% !important;
+        overflow-x: auto !important;
+        display: block !important;
+        -webkit-overflow-scrolling: touch !important;
+    }
+    .modal-content {
+        width: 90% !important;
+        margin: 10% auto !important;
+        box-sizing: border-box !important;
+        padding: 20px !important;
+    }
+}
+</style>
+
+<div class="container">
+
+<div class="cards">
+
+    <!-- PROFILE -->
+    <div class="card profile-card">
+        {% if request.user.profile_picture %}
+            <img src="{{ request.user.profile_picture.url }}" class="profile-img">
+        {% else %}
+            <div class="profile-placeholder">
+                {{ request.user.username|make_list|first }}
+            </div>
+        {% endif %}
+
+        <div class="profile-info" style="width: 100%;">
+            <h2 style="margin: 0 0 10px 0; color: #333;">{{ request.user.get_full_name|default:request.user.username }}</h2>
+            <p style="margin: 0 0 5px 0; color: #666; font-size: 15px;"><strong>Dept:</strong> {{ request.user.department|default:"Not Set" }}</p>
+            <p style="margin: 0 0 5px 0; color: #666; font-size: 15px;"><strong>Role:</strong> {{ request.user.designation|default:"Not Set" }}</p>
+            <p style="margin: 0 0 15px 0; color: #666; font-size: 15px;"><strong>Shift:</strong> {{ request.user.shift_start|time:"h:i A" }} - {{ request.user.shift_end|time:"h:i A" }}</p>
+        </div>
+
+        <button type="button" onclick="document.getElementById('profileModal').style.display='flex'"
+            style="background: #007bff; color: white; padding: 12px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; width: 100%; font-size: 15px; transition: 0.2s;">
+            ✏️ Edit Profile
+        </button>
+    </div>
+
+    <!-- LEAVE -->
+    <div class="card" style="grid-column: 1 / -1;">
+        <h3 style="margin-top: 0; color: #333; border-bottom: 1px solid #eee; padding-bottom: 10px;">🌴 Request Leave</h3>
+
+        <form method="POST" action="{% url 'request_leave' %}">
+            {% csrf_token %}
+            <div class="leave-form-row">
+                <div class="leave-form-group">
+                    <label>Leave Type</label>
+                    <select name="leave_type" required>
+                        <option value="Sick">Sick</option>
+                        <option value="Vacation">Vacation</option>
+                        <option value="Half-Day">Half-Day</option>
+                    </select>
+                </div>
+                <div class="leave-form-group">
+                    <label>Start Date</label>
+                    <input type="date" name="start_date" required>
+                </div>
+                <div class="leave-form-group">
+                    <label>End Date</label>
+                    <input type="date" name="end_date" required>
+                </div>
+                <div class="leave-form-group" style="flex: 2;">
+                    <label>Reason</label>
+                    <input type="text" name="reason" placeholder="Brief reason" required>
+                </div>
+                <button type="submit" style="background: #28a745; color: white; padding: 0 20px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; height: 42px;">Submit Request</button>
+            </div>
+        </form>
+
+        {% if leaves %}
+        <h4 style="margin-top: 25px; color: #555;">My Leave History</h4>
+        <ul class="leave-list" style="margin-top: 10px;">
+            {% for l in leaves %}
+            <li>
+                <div style="font-size: 14px; color: #333;">
+                    <strong style="color: #007bff;">{{ l.leave_type }}</strong> &nbsp;|&nbsp; 
+                    <span style="color: #666;">{{ l.start_date|date:"M d, Y" }} <span style="font-size:12px;">to</span> {{ l.end_date|date:"M d, Y" }}</span>
+                </div>
+                <div style="font-weight: bold; font-size: 13px;">
+                    {% if l.status == 'Approved' %}
+                        <span style="background: #d4edda; color: #155724; padding: 4px 8px; border-radius: 4px;">✅ Approved</span>
+                    {% elif l.status == 'Rejected' %}
+                        <span style="background: #f8d7da; color: #721c24; padding: 4px 8px; border-radius: 4px;">❌ Rejected</span>
+                    {% else %}
+                        <span style="background: #fff3cd; color: #856404; padding: 4px 8px; border-radius: 4px;">⏳ Pending</span>
+                    {% endif %}
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+    </div>
+
+    <!-- CALENDAR -->
+    <div class="card" style="grid-column: 1 / -1;">
+        <h3>Calendar</h3>
+        {{ calendar_events|json_script:"calendar-data" }}
+        <div id="employeeCalendar"></div>
+    </div>
+
+    <!-- TIMESHEET -->
+    <div class="card" style="display: flex; flex-direction: column; justify-content: center; text-align: center; border: 2px solid #007bff;">
+        <h3 style="margin-top: 0; margin-bottom: 5px;">Timesheet</h3>
+        <p style="color: #666; font-size: 14px; margin-bottom: 15px;">Punch your daily attendance</p>
+
+        {% if not record or not record.check_out %}
+            <a href="{% url 'scanner_page' %}" style="background: #007bff; color: white; margin-top: auto; width: 100%; padding: 12px; font-size: 16px; border-radius: 8px; text-decoration: none; font-weight: bold;">📷 Open QR Scanner</a>
+        {% else %}
+            <button disabled style="background: #28a745; color: white; border: none; margin-top: auto; width: 100%; padding: 12px; font-size: 16px; border-radius: 8px; font-weight: bold; cursor: not-allowed;">✅ Shift Completed</button>
+        {% endif %}
+    </div>
+
+    <!-- STATS -->
+    <div class="card">
+        <h3>Statistics</h3>
+        <p>{{ records.count }} Records</p>
+    </div>
+
+    <!-- ACTIVITY -->
+    <div class="card">
+        <h3>Today</h3>
+
+        {% if record %}
+            <p>
+                {% if record.check_in %}
+                    ✔ <strong>Check-in:</strong> {{ record.check_in|time:"h:i A" }}
+                    {% if record.is_late %}<br><span style="color: red; font-size: 13px; font-weight: bold;">(LATE)</span>{% endif %}
+                {% endif %}
+            </p>
+
+            <p style="margin-top: 10px;">
+                {% if record.check_out %}
+                    ✖ <strong>Check-out:</strong> {{ record.check_out|time:"h:i A" }}
+                    {% if record.is_early %}<br><span style="color: orange; font-size: 13px; font-weight: bold;">(EARLY CHECK-OUT)</span>{% endif %}
+                {% else %}
+                    Pending Checkout
+                {% endif %}
+            </p>
+        {% else %}
+            <p style="color: #888;">No activity logged yet today.</p>
+        {% endif %}
+    </div>
+
+</div>
+
+<!-- TABLE -->
+<div class="table">
+    <h3>Attendance</h3>
+
+    <table>
+        <tr>
+            <th>Date</th>
+            <th>Check In</th>
+            <th>Check Out</th>
+        </tr>
+
+        {% for r in records %}
+        <tr>
+            <td>{{ r.date }}</td>
+            <td>{{ r.check_in|default:"-" }}{% if r.is_late %}<br><span style="color: red; font-size: 11px; font-weight: bold;">LATE</span>{% endif %}</td>
+            <td>{{ r.check_out|default:"Pending" }}{% if r.is_early %}<br><span style="color: orange; font-size: 11px; font-weight: bold;">EARLY</span>{% endif %}</td>
+        </tr>
+        {% endfor %}
+    </table>
+</div>
+
+</div>
+
+<!-- MODAL -->
+<div id="profileModal" class="modal" style="display: none;">
+    <div class="modal-content" style="max-width: 400px; width: 100%; border-radius: 16px; padding: 30px; position: relative;">
+        <h3 style="margin-top: 0; color: #333; font-size: 24px; margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 10px;">Update Profile</h3>
+
+        <form method="POST" action="{% url 'update_profile' %}" enctype="multipart/form-data" style="display: flex; flex-direction: column; gap: 15px;">
+            {% csrf_token %}
+
+            <div>
+                <label style="font-size: 14px; font-weight: bold; color: #555; display: block; margin-bottom: 5px;">Department</label>
+                <input type="text" name="department" placeholder="e.g. IT, Sales"
+                    value="{{ request.user.department|default:'' }}" style="width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box;">
+            </div>
+
+            <div>
+                <label style="font-size: 14px; font-weight: bold; color: #555; display: block; margin-bottom: 5px;">Designation</label>
+                <input type="text" name="designation" placeholder="e.g. Software Engineer"
+                    value="{{ request.user.designation|default:'' }}" style="width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box;">
+            </div>
+
+            <div>
+                <label style="font-size: 14px; font-weight: bold; color: #555; display: block; margin-bottom: 10px;">Profile Picture</label>
+                <div style="display: flex; align-items: center; gap: 15px; background: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px dashed #ddd;">
+                    <img id="profilePicPreview" src="{% if request.user.profile_picture %}{{ request.user.profile_picture.url }}{% else %}https://via.placeholder.com/60?text=No+Img{% endif %}" style="width: 60px; height: 60px; border-radius: 50%; object-fit: cover; border: 2px solid #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
+                    <input type="file" name="profile_picture" id="profilePicInput" accept="image/*" style="flex: 1; font-size: 14px; color: #555; cursor: pointer; width: 100%;">
+                </div>
+            </div>
+
+            <div style="margin-top:20px; display:flex; gap:10px; justify-content:flex-end;">
+                <button type="button" style="background: #e2e8f0; color: #333; border: none; border-radius: 6px; cursor: pointer; margin-top: 0; padding: 10px 20px; font-weight: bold;" onclick="document.getElementById('profileModal').style.display='none'">Cancel</button>
+                <button type="submit" style="background: #007bff; color: white; border: none; border-radius: 6px; cursor: pointer; margin-top: 0; padding: 10px 25px; font-weight: bold;">Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- JS UNCHANGED -->
+<script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js'></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var eventsData = JSON.parse(document.getElementById('calendar-data').textContent);
+    var calendar = new FullCalendar.Calendar(document.getElementById('employeeCalendar'), {
+        initialView: 'dayGridMonth',
+        events: eventsData,
+        height: 'auto',
+        headerToolbar: {
+            left: 'title',
+            right: 'prev,next today'
+        }
+    });
+    calendar.render();
+});
+
+document.getElementById('profilePicInput').addEventListener('change', function(event) {
+    var reader = new FileReader();
+    reader.onload = function(e) {
+        var preview = document.getElementById('profilePicPreview');
+        if(preview) preview.src = e.target.result;
+    };
+    if(event.target.files[0]) {
+        reader.readAsDataURL(event.target.files[0]);
+    }
+});
+</script>
+
+{% endblock %}

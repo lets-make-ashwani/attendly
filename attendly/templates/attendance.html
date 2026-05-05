@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container">
+    <div class="table" style="margin-top: 20px;">
+        <h2 style="color: #333; margin-bottom: 10px; padding: 15px 15px 0 15px;">📅 Master Attendance Log</h2>
+        <p style="color: #666; padding: 0 15px 15px 15px; font-size: 14px; border-bottom: 1px solid #eee;">A complete history of all employee check-ins and check-outs.</p>
+        
+        <div style="overflow-x: auto;">
+            <table>
+                <tr>
+                    <th>Date</th>
+                    <th>Employee</th>
+                    <th>Department</th>
+                    <th>Check In</th>
+                    <th>Check Out</th>
+                    <th>Status</th>
+                </tr>
+                {% for record in attendance_records %}
+                <tr>
+                    <td>{{ record.date|date:"M d, Y" }}</td>
+                    <td><a href="{% url 'employee_detail' record.user.id %}" style="text-decoration: none; color: #007bff; font-weight: bold;">{{ record.user.get_full_name|default:record.user.username }}</a></td>
+                    <td>{{ record.user.department|default:"-" }}</td>
+                    <td>
+                        {{ record.check_in|time:"h:i A"|default:"-" }}
+                        {% if record.is_late %}<br><span style="color: red; font-size: 11px; font-weight: bold;">LATE</span>{% endif %}
+                    </td>
+                    <td>
+                        {{ record.check_out|time:"h:i A"|default:"-" }}
+                        {% if record.is_early %}<br><span style="color: orange; font-size: 11px; font-weight: bold;">EARLY OUT</span>{% endif %}
+                    </td>
+                    <td>
+                        {% if record.check_in and record.check_out %}<span style="color: green; font-weight: bold;">Complete</span>
+                        {% elif record.check_in %}<span style="color: #007bff; font-weight: bold;">In Progress</span>
+                        {% else %}<span style="color: red; font-weight: bold;">Absent</span>{% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" style="text-align: center;">No attendance records found.</td>
+                </tr>
+                {% endfor %}
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

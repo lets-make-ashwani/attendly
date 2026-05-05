@@ -1,0 +1,118 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container" style="display: flex; justify-content: center; align-items: flex-start; min-height: 80vh; padding-top: 40px;">
+    <div class="card" style="width: 100%; max-width: 450px; text-align: center; padding: 40px 20px; box-shadow: 0 10px 20px rgba(0,0,0,0.1); border-radius: 12px;">
+        
+        <div style="font-size: 50px; margin-bottom: 10px;">📍</div>
+        <h2 style="margin-top: 0; color: #333;">QR Attendance Scanner</h2>
+        <p style="color: #666; margin-bottom: 30px; line-height: 1.5;">Make sure you are physically at the office location to successfully punch your attendance.</p>
+        
+        <!-- Loading Spinner (Hidden by default) -->
+        <div id="loadingSpinner" style="display: none; justify-content: center; margin-bottom: 20px;">
+            <div style="width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid #007bff; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+        </div>
+
+        <button id="punchBtn" style="width: 100%; padding: 15px; font-size: 18px; font-weight: bold; background-color: #007bff; color: white; border: none; border-radius: 8px; cursor: pointer; transition: background-color 0.3s;">
+            Punch Attendance (Get GPS)
+        </button>
+        
+        <p id="statusMsg" style="margin-top: 20px; font-weight: bold; min-height: 24px; padding: 10px; border-radius: 5px; display: none;"></p>
+    </div>
+</div>
+
+<style>
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    #punchBtn:hover {
+        background-color: #0056b3;
+    }
+    #punchBtn:disabled {
+        background-color: #cccccc;
+        cursor: not-allowed;
+    }
+</style>
+
+    <script>
+        document.getElementById('punchBtn').addEventListener('click', function() {
+            const statusMsg = document.getElementById('statusMsg');
+            const punchBtn = document.getElementById('punchBtn');
+            const spinner = document.getElementById('loadingSpinner');
+            
+            // UI Loading State
+            punchBtn.disabled = true;
+            punchBtn.textContent = "Getting Location...";
+            spinner.style.display = "flex";
+            statusMsg.style.display = "none";
+
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(function(position) {
+                    const lat = position.coords.latitude;
+                    const lon = position.coords.longitude;
+                    
+                    fetch('/attendance/qr-scan/', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': '{{ csrf_token }}'
+                        },
+                        body: JSON.stringify({ lat: lat, lon: lon })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        spinner.style.display = "none";
+                        punchBtn.disabled = false;
+                        punchBtn.textContent = "Punch Attendance (Get GPS)";
+                        statusMsg.style.display = "block";
+                        statusMsg.textContent = data.message;
+                        statusMsg.style.backgroundColor = data.status === 'success' ? '#d4edda' : '#f8d7da';
+                        statusMsg.style.color = data.status === 'success' ? '#155724' : '#721c24';
+                    })
+                    .catch(error => {
+                        spinner.style.display = "none";
+                        punchBtn.disabled = false;
+                        punchBtn.textContent = "Punch Attendance (Get GPS)";
+                        statusMsg.style.display = "block";
+                        statusMsg.textContent = "Error communicating with server.";
+                        statusMsg.style.backgroundColor = "#f8d7da";
+                        statusMsg.style.color = "#721c24";
+                    });
+                }, function(error) {
+                    spinner.style.display = "none";
+                    punchBtn.disabled = false;
+                    punchBtn.textContent = "Punch Attendance (Get GPS)";
+                    let errorMsg = "Failed to get location. Ensure GPS is on.";
+                    switch(error.code) {
+                        case error.PERMISSION_DENIED:
+                            errorMsg = "Location access denied. Please allow location permissions in your browser settings.";
+                            break;
+                        case error.POSITION_UNAVAILABLE:
+                            errorMsg = "Location information is unavailable. Ensure your GPS is turned on.";
+                            break;
+                        case error.TIMEOUT:
+                            errorMsg = "The request to get your location timed out. Please try again.";
+                            break;
+                    }
+                    statusMsg.style.display = "block";
+                    statusMsg.textContent = errorMsg;
+                    statusMsg.style.backgroundColor = "#f8d7da";
+                    statusMsg.style.color = "#721c24";
+                }, {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 0
+                });
+            } else {
+                spinner.style.display = "none";
+                punchBtn.disabled = false;
+                punchBtn.textContent = "Punch Attendance (Get GPS)";
+                statusMsg.style.display = "block";
+                statusMsg.textContent = "Geolocation is not supported by this browser.";
+                statusMsg.style.backgroundColor = "#f8d7da";
+                statusMsg.style.color = "#721c24";
+            }
+        });
+    </script>
+{% endblock %}
